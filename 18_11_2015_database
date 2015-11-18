@@ -1,0 +1,166 @@
+/* 教科書 第7章 正規化理論 更新時異状 デモDB */
+
+.mode column
+.header on
+
+/* 注文表の作成 */
+
+CREATE TABLE 注文 (
+	顧客名 CHAR(5) NOT NULL,
+	商品名 CHAR(5) NOT NULL,
+	数量 INT,
+	単価 INT,
+	金額 INT,
+	PRIMARY KEY (顧客名, 商品名)
+);
+
+/* 更新時異状の発生デモ */
+
+/* 注文表へのタプル挿入 */
+
+INSERT INTO 注文 (顧客名, 商品名, 数量, 単価, 金額)
+	VALUES ('A商店', 'テレビ', 3, 198000, 594000);
+INSERT INTO 注文 (顧客名, 商品名, 数量, 単価, 金額)
+	VALUES ('B市場', 'テレビ', 10, 198000, 1980000);
+INSERT INTO 注文 (顧客名, 商品名, 数量, 単価, 金額)
+	VALUES ('B市場', '洗濯機', 5, 59800, 299000);
+INSERT INTO 注文 (顧客名, 商品名, 数量, 単価, 金額)
+	VALUES ('C社', '餅つき機', 1, 29800, 29800);
+
+SELECT * FROM 注文;
+
+/* タプル挿入時異状 */
+
+INSERT INTO 注文 (顧客名, 商品名, 数量, 単価, 金額)
+	VALUES (NULL, '電子レンジ', NULL, 74800, NULL);
+
+/* タプル削除時異状 */
+
+DELETE FROM 注文
+	WHERE 顧客名 = 'C社' AND 商品名 = '餅つき機';
+
+SELECT * FROM 注文;
+
+INSERT INTO 注文 (顧客名, 商品名, 数量, 単価, 金額)
+	VALUES (NULL, '餅つき機', NULL, 29800, NULL);
+
+INSERT INTO 注文 (顧客名, 商品名, 数量, 単価, 金額)
+	VALUES ('C社', '餅つき機', 1, 29800, 29800);	/* 復元用 */
+
+/* タプル修正時異状 */
+
+UPDATE 注文 SET 単価 = 148000, 金額 = 数量 * 148000
+	WHERE 顧客名 = 'A商店' AND 商品名 = 'テレビ';
+
+SELECT * FROM 注文;
+
+UPDATE 注文 SET 単価 = 148000
+	WHERE 顧客名 = 'B市場' AND 商品名 = 'テレビ';
+
+UPDATE 注文 SET 商品名 = '洗濯機', 単価 = 59800, 金額 = 59800
+	WHERE 顧客名 = 'C社' AND 商品名 = '餅つき機';
+
+SELECT * FROM 注文;
+
+/* 注文表の復元 */
+
+DELETE FROM 注文;
+INSERT INTO 注文 (顧客名, 商品名, 数量, 単価, 金額)
+	VALUES ('A商店', 'テレビ', 3, 198000, 594000);
+INSERT INTO 注文 (顧客名, 商品名, 数量, 単価, 金額)
+	VALUES ('B市場', 'テレビ', 10, 198000, 1980000);
+INSERT INTO 注文 (顧客名, 商品名, 数量, 単価, 金額)
+	VALUES ('B市場', '洗濯機', 5, 59800, 299000);
+INSERT INTO 注文 (顧客名, 商品名, 数量, 単価, 金額)
+	VALUES ('C社', '餅つき機', 1, 29800, 29800);
+SELECT * FROM 注文;
+
+/* 情報無損失分解デモ */
+
+/* 情報損失のある分解 */
+
+CREATE TABLE 注文_1 (
+	顧客名 CHAR(5) NOT NULL,
+	商品名 CHAR(5) NOT NULL,
+	数量 INT,
+	単価 INT,
+	PRIMARY KEY (顧客名, 商品名)
+);
+
+CREATE TABLE 注文_2 (
+	商品名 CHAR(5) NOT NULL,
+	金額 INT
+);
+
+INSERT INTO 注文_1 (顧客名, 商品名, 数量, 単価)
+SELECT 顧客名, 商品名, 数量, 単価 FROM 注文;
+
+INSERT INTO 注文_2 (商品名, 金額)
+SELECT DISTINCT 商品名, 金額 FROM 注文;
+
+SELECT * FROM 注文_1;
+SELECT * FROM 注文_2;
+
+SELECT 顧客名, 注文_1.商品名, 数量, 単価, 金額
+	FROM 注文_1, 注文_2
+	WHERE 注文_1.商品名 = 注文_2.商品名;
+
+/* 情報損失のない分解 */
+
+CREATE TABLE 注文_3 (
+	顧客名 CHAR(5) NOT NULL,
+	商品名 CHAR(5) NOT NULL,
+	数量 INT,
+	金額 INT,
+	PRIMARY KEY (顧客名, 商品名)
+);
+
+CREATE TABLE 注文_4 (
+	商品名 CHAR(5) NOT NULL,
+	単価 INT,
+	PRIMARY KEY (商品名)
+);
+
+INSERT INTO 注文_3 (顧客名, 商品名, 数量, 金額)
+SELECT 顧客名, 商品名, 数量, 金額 FROM 注文;
+
+INSERT INTO 注文_4 (商品名, 単価)
+SELECT DISTINCT 商品名, 単価 FROM 注文;
+
+SELECT * FROM 注文_3;
+SELECT * FROM 注文_4;
+
+SELECT 顧客名, 注文_3.商品名, 数量, 単価, 金額
+	FROM 注文_3, 注文_4
+	WHERE 注文_3.商品名 = 注文_4.商品名;
+
+/* 多値従属性 */
+
+CREATE TABLE フライト_1 (
+	フライト番号 INT,
+	`クルー名` CHAR(2),
+	PRIMARY KEY (フライト番号, `クルー名`)
+);
+
+CREATE TABLE フライト_2 (
+	フライト番号 INT,
+	乗客名 CHAR(2),
+	PRIMARY KEY (フライト番号, 乗客名)
+);
+
+INSERT INTO フライト_1 VALUES (55, 'P');
+INSERT INTO フライト_1 VALUES (55, 'S');
+INSERT INTO フライト_1 VALUES (505, 'P''');
+INSERT INTO フライト_1 VALUES (505, 'S''');
+
+INSERT INTO フライト_2 VALUES (55, 'A');
+INSERT INTO フライト_2 VALUES (55, 'B');
+INSERT INTO フライト_2 VALUES (55, 'C');
+INSERT INTO フライト_2 VALUES (505, 'A''');
+
+SELECT * FROM フライト_1;
+SELECT * FROM フライト_2;
+
+SELECT x.フライト番号, `クルー名`, 乗客名
+	FROM フライト_1 x, フライト_2 y
+	WHERE x.フライト番号 = y.フライト番号;
